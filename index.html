@@ -5,8 +5,8 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Richdale AI - Image Compare</title>
     <meta name="theme-color" content="#4A90E2">
-    <link rel="manifest" href="./manifest.json">
-    <link rel="apple-touch-icon" href="./icon192.png">
+    <link rel="manifest" href="manifest.json">
+    <link rel="icon" type="image/svg+xml" href="icon.svg">
     <style>
         :root {
             --primary-color: #4A90E2;
@@ -60,6 +60,8 @@
             background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
+            color: var(--primary-color); /* Fallback for browsers that don't support background-clip */
+            display: inline-block;
         }
 
         .brand-logo sup {
@@ -245,12 +247,14 @@
 
         input[type="range"] {
             -webkit-appearance: none;
+            -moz-appearance: none;
             appearance: none;
             width: 100%;
             height: 6px;
             background: var(--control-bg);
             border-radius: 3px;
             outline: none;
+            touch-action: none;
         }
 
         input[type="range"]::-webkit-slider-thumb {
@@ -264,7 +268,53 @@
             transition: transform 0.2s ease;
         }
 
-        input[type="range"]::-webkit-slider-thumb:hover {
+        input[type="range"]::-moz-range-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--primary-color);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        input[type="range"]::-ms-thumb {
+            width: 18px;
+            height: 18px;
+            background: var(--primary-color);
+            border: none;
+            border-radius: 50%;
+            cursor: pointer;
+            transition: transform 0.2s ease;
+        }
+
+        input[type="range"]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            background: var(--control-bg);
+            border: none;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-moz-range-track {
+            width: 100%;
+            height: 6px;
+            background: var(--control-bg);
+            border: none;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-ms-track {
+            width: 100%;
+            height: 6px;
+            background: var(--control-bg);
+            border: none;
+            border-radius: 3px;
+        }
+
+        input[type="range"]::-webkit-slider-thumb:hover,
+        input[type="range"]::-moz-range-thumb:hover,
+        input[type="range"]::-ms-thumb:hover {
             transform: scale(1.2);
         }
 
@@ -283,6 +333,16 @@
             display: flex;
             align-items: center;
             justify-content: center;
+            z-index: 1000;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+        }
+
+        .theme-toggle:before {
+            content: "☀️";
+        }
+
+        [data-theme="dark"] .theme-toggle:before {
+            content: "🌙";
         }
 
         .install-button {
@@ -387,11 +447,13 @@
         <div class="upload-section">
             <div class="upload-box">
                 <h3>Before Image</h3>
-                <input type="file" id="beforeInput" accept="image/*">
+                <button id="beforeUpload">Upload</button>
+                <input type="file" id="beforeInput" accept="image/*" style="display: none;">
             </div>
             <div class="upload-box">
                 <h3>After Image</h3>
-                <input type="file" id="afterInput" accept="image/*">
+                <button id="afterUpload">Upload</button>
+                <input type="file" id="afterInput" accept="image/*" style="display: none;">
             </div>
         </div>
     </div>
@@ -404,12 +466,7 @@
         <div class="slider" id="slider"></div>
     </div>
 
-    <button class="theme-toggle" id="themeToggle">
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="5"/>
-            <path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/>
-        </svg>
-    </button>
+    <button class="theme-toggle" id="themeToggle" aria-label="Toggle dark/light mode"></button>
 
     <button class="install-button" id="installButton">
         <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -478,7 +535,19 @@
         </div>
     </div>
 
+    <script src="https://unpkg.com/@capacitor/core@latest/dist/capacitor.js"></script>
     <script>
+        // Initialize Capacitor if available
+        let isNative = false;
+        try {
+            if (typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform()) {
+                isNative = true;
+                console.log('Running on native platform');
+            }
+        } catch (e) {
+            console.log('Not running on native platform');
+        }
+
         const container = document.getElementById('sliderContainer');
         const handle = document.getElementById('sliderHandle');
         const beforeImage = document.getElementById('beforeImage');
@@ -540,13 +609,62 @@
             updateSliderPosition(e.clientX);
         });
 
+        // Add native camera support
+        document.getElementById('beforeUpload').addEventListener('click', async (e) => {
+            if (isNative && typeof Capacitor.Plugins.Camera !== 'undefined') {
+                try {
+                    const image = await Capacitor.Plugins.Camera.getPhoto({
+                        quality: 90,
+                        allowEditing: false,
+                        resultType: 'dataUrl'
+                    });
+                    
+                    beforeImage.src = image.dataUrl;
+                    beforeImage.onload = checkImagesLoaded;
+                } catch (e) {
+                    console.error('Camera error:', e);
+                    // Fall back to file input
+                    beforeInput.click();
+                }
+            } else {
+                beforeInput.click();
+            }
+        });
+
+        document.getElementById('afterUpload').addEventListener('click', async (e) => {
+            if (isNative && typeof Capacitor.Plugins.Camera !== 'undefined') {
+                try {
+                    const image = await Capacitor.Plugins.Camera.getPhoto({
+                        quality: 90,
+                        allowEditing: false,
+                        resultType: 'dataUrl'
+                    });
+                    
+                    afterImage.src = image.dataUrl;
+                    afterImage.onload = checkImagesLoaded;
+                } catch (e) {
+                    console.error('Camera error:', e);
+                    // Fall back to file input
+                    afterInput.click();
+                }
+            } else {
+                afterInput.click();
+            }
+        });
+
         // Theme Toggle
         const themeToggle = document.getElementById('themeToggle');
-        let isDarkMode = false;
+        let isDarkMode = localStorage.getItem('darkMode') === 'true';
+        
+        // Set initial theme based on saved preference
+        if (isDarkMode) {
+            document.documentElement.setAttribute('data-theme', 'dark');
+        }
 
         themeToggle.addEventListener('click', () => {
             isDarkMode = !isDarkMode;
             document.documentElement.setAttribute('data-theme', isDarkMode ? 'dark' : 'light');
+            localStorage.setItem('darkMode', isDarkMode);
         });
 
         // Image Adjustments
@@ -692,14 +810,31 @@
         });
 
         document.getElementById('shareLink').addEventListener('click', async () => {
-            try {
-                await navigator.share({
-                    title: 'Image Comparison',
-                    text: 'Check out this image comparison!',
-                    url: window.location.href
-                });
-            } catch (err) {
-                alert('Sharing is not supported on this device/browser');
+            if (isNative && typeof Capacitor.Plugins.Share !== 'undefined') {
+                try {
+                    await Capacitor.Plugins.Share.share({
+                        title: 'Image Comparison',
+                        text: 'Check out this image comparison!',
+                        url: 'https://richdale.ai',
+                        dialogTitle: 'Share with friends'
+                    });
+                } catch (e) {
+                    console.error('Share error:', e);
+                    alert('Sharing not available');
+                }
+            } else if (navigator.share) {
+                try {
+                    await navigator.share({
+                        title: 'Image Comparison',
+                        text: 'Check out this image comparison!',
+                        url: window.location.href
+                    });
+                } catch (e) {
+                    console.error('Web Share API error:', e);
+                    alert('Sharing not available');
+                }
+            } else {
+                alert('Sharing not supported on this device');
             }
         });
 

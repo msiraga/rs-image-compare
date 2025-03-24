@@ -1,0 +1,26 @@
+{
+  "name": "image-slider",
+  "version": "1.0.0",
+  "description": "Image Comparison Slider",
+  "main": "index.html",
+  "scripts": {
+    "start": "npx serve",
+    "build": "npm run copy-files",
+    "copy-files": "mkdir -p www && copy *.html *.js *.json *.png *.svg www\\",
+    "cap:init": "npx cap init \"Image Slider\" \"com.richdale.imageslider\"",
+    "cap:add": "npx cap add ios && npx cap add android",
+    "cap:sync": "npx cap sync"
+  },
+  "dependencies": {
+    "@capacitor/core": "^5.0.0",
+    "@capacitor/ios": "^5.0.0",
+    "@capacitor/android": "^5.0.0",
+    "@capacitor/camera": "^5.0.0",
+    "@capacitor/filesystem": "^5.0.0",
+    "@capacitor/share": "^5.0.0"
+  },
+  "devDependencies": {
+    "@capacitor/cli": "^5.0.0",
+    "serve": "^14.0.0"
+  }
+}
