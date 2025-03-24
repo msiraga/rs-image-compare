@@ -118,6 +118,23 @@
             transform: translateX(-50%);
         }
 
+        .slider {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            left: 50%;
+            top: 50%;
+            transform: translate(-50%, -50%);
+            background: var(--primary-color);
+            border-radius: 50%;
+            cursor: grab;
+            touch-action: none; /* Important for smooth touch */
+        }
+
+        .slider:active {
+            cursor: grabbing;
+        }
+
         .placeholder-text {
             position: absolute;
             top: 50%;
@@ -319,6 +336,7 @@
         <img src="" alt="Before" class="slider-image" id="beforeImage" style="display: none;">
         <img src="" alt="After" class="slider-image overlay" id="afterImage" style="display: none;">
         <div class="slider-handle" id="sliderHandle"></div>
+        <div class="slider" id="slider"></div>
     </div>
 
     <button class="theme-toggle" id="themeToggle">
@@ -347,6 +365,14 @@
 
     <div class="controls-container">
         <div class="controls-section">
+            <div class="control-group">
+                <button id="resetButton" class="control-btn" title="Reset Images">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M3 12a9 9 0 1 1 9 9M3 12h6M3 12l3-3m0 6l-3-3"/>
+                    </svg>
+                    Reset
+                </button>
+            </div>
             <div class="control-group">
                 <h3>Image Adjustments</h3>
                 <label>Brightness
@@ -732,6 +758,64 @@
                         console.log('ServiceWorker registration failed: ', err);
                     });
             });
+        }
+
+        // Add touch event handling
+        const slider = document.getElementById('slider');
+        const sliderContainer = document.querySelector('.slider-container');
+
+        function handleStart(e) {
+            isDragging = true;
+            slider.style.cursor = 'grabbing';
+            // Prevent default to avoid scrolling while sliding
+            e.preventDefault();
+        }
+
+        function handleMove(e) {
+            if (!isDragging) return;
+            
+            let clientX;
+            if (e.type === 'touchmove') {
+                clientX = e.touches[0].clientX;
+            } else {
+                clientX = e.clientX;
+            }
+
+            const rect = sliderContainer.getBoundingClientRect();
+            let position = (clientX - rect.left) / rect.width;
+            position = Math.max(0, Math.min(1, position));
+            
+            updateSliderPosition(position);
+        }
+
+        function handleEnd() {
+            isDragging = false;
+            slider.style.cursor = 'grab';
+        }
+
+        // Touch events
+        slider.addEventListener('touchstart', handleStart, { passive: false });
+        document.addEventListener('touchmove', handleMove, { passive: false });
+        document.addEventListener('touchend', handleEnd);
+
+        // Mouse events
+        slider.addEventListener('mousedown', handleStart);
+        document.addEventListener('mousemove', handleMove);
+        document.addEventListener('mouseup', handleEnd);
+
+        // Reset button functionality
+        const resetButton = document.getElementById('resetButton');
+        resetButton.addEventListener('click', () => {
+            updateSliderPosition(0.5); // Reset to middle
+            // Reset any image adjustments if they exist
+            if (window.resetImageAdjustments) {
+                window.resetImageAdjustments();
+            }
+        });
+
+        function updateSliderPosition(position) {
+            slider.style.left = `${position * 100}%`;
+            document.querySelector('.before').style.width = `${position * 100}%`;
         }
     </script>
 </body>
