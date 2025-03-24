@@ -7,6 +7,9 @@
     <meta name="theme-color" content="#ffffff">
     <link rel="manifest" href="manifest.json">
     <link rel="apple-touch-icon" href="icon-192.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
+    <meta name="apple-mobile-web-app-title" content="Richdale AI">
     <style>
         :root {
             --primary-color: #00008B;
@@ -214,15 +217,17 @@
             border: none;
             cursor: pointer;
             font-weight: bold;
-            display: none; /* Hidden by default */
+            display: none;
             align-items: center;
             gap: 8px;
             box-shadow: 0 2px 8px var(--shadow-color);
-            transition: transform 0.2s;
+            transition: transform 0.2s, background-color 0.2s;
+            z-index: 1000;
         }
 
         .install-button:hover {
             transform: translateY(-2px);
+            background-color: #000066;
         }
 
         .install-button svg {
@@ -248,6 +253,30 @@
         .filter-btn.active {
             background: var(--primary-color);
             color: white;
+        }
+
+        .ios-install-prompt {
+            position: fixed;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 16px 24px;
+            border-radius: 12px;
+            font-size: 14px;
+            text-align: center;
+            display: none;
+            z-index: 1000;
+            max-width: 90%;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(8px);
+        }
+
+        .ios-install-prompt svg {
+            width: 24px;
+            height: 24px;
+            stroke: white;
         }
 
         @media (max-width: 850px) {
@@ -310,6 +339,14 @@
         </svg>
         Install App
     </button>
+
+    <div class="ios-install-prompt" id="iosInstallPrompt">
+        <button class="close-button" id="closeIosPrompt">×</button>
+        <h3>Install on your iPhone</h3>
+        <p>1. Open in Safari</p>
+        <p>2. Tap the Share button</p>
+        <p>3. Tap "Add to Home Screen"</p>
+    </div>
 
     <div class="controls-container">
         <div class="controls-section">
@@ -623,24 +660,20 @@
 
         installButton.addEventListener('click', async () => {
             if (!deferredPrompt) {
-                // The deferred prompt isn't available
                 if (/android/i.test(navigator.userAgent)) {
-                    // If on Android but can't install, show instructions
                     alert('To install this app:\n1. Open in Chrome\n2. Tap Menu (⋮)\n3. Tap "Install app" or "Add to Home screen"');
+                } else if (isIOS()) {
+                    showIOSPrompt();
                 }
                 return;
             }
-            // Show the install prompt
             deferredPrompt.prompt();
-            // Wait for the user to respond to the prompt
             const { outcome } = await deferredPrompt.userChoice;
-            // We no longer need the prompt. Clear it up
             deferredPrompt = null;
-            // Hide the install button
             installButton.style.display = 'none';
         });
 
-        // Hide the install button if the app is already installed
+        // Restore normal install button behavior
         window.addEventListener('appinstalled', () => {
             installButton.style.display = 'none';
             deferredPrompt = null;
@@ -650,6 +683,46 @@
         if (window.matchMedia('(display-mode: standalone)').matches) {
             installButton.style.display = 'none';
         }
+
+        // More reliable iOS detection
+        const isIOS = () => {
+            const ua = navigator.userAgent.toLowerCase();
+            return (
+                /iphone|ipad|ipod/.test(ua) ||              // iOS devices
+                (ua.includes('mac') && 'ontouchend' in document)  // iPad with desktop mode
+            ) && !window.MSStream;  // Exclude IE11
+        };
+
+        // iOS installation prompt
+        const iosPrompt = document.getElementById('iosInstallPrompt');
+        const closeIosPrompt = document.getElementById('closeIosPrompt');
+        let promptShown = false;  // Prevent multiple prompts
+
+        // Show iOS prompt if conditions are met
+        const showIOSPrompt = () => {
+            if (!promptShown && 
+                isIOS() && 
+                !window.matchMedia('(display-mode: standalone)').matches && 
+                !localStorage.getItem('iosPromptDismissed')) {
+                iosPrompt.style.display = 'block';
+                promptShown = true;
+            }
+        };
+
+        // Delay prompt for better UX
+        if (document.readyState === 'complete') {
+            setTimeout(showIOSPrompt, 2000);
+        } else {
+            window.addEventListener('load', () => {
+                setTimeout(showIOSPrompt, 2000);
+            });
+        }
+
+        closeIosPrompt.addEventListener('click', () => {
+            iosPrompt.style.display = 'none';
+            localStorage.setItem('iosPromptDismissed', 'true');
+            promptShown = false;
+        });
     </script>
 </body>
 </html>
