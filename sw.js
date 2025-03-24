@@ -1,9 +1,10 @@
-const CACHE_NAME = 'rs-image-compare-v1';
+const CACHE_NAME = 'richdale-image-compare-v1';
 const urlsToCache = [
-  'index.html',
-  'manifest.json',
-  'icon-192.png',
-  'icon-512.png'
+  './',
+  './index.html',
+  './manifest.json',
+  './icon192.png',
+  './icon512.png'
 ];
 
 self.addEventListener('install', event => {
